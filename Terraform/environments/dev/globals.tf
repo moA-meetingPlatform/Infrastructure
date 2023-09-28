@@ -66,7 +66,7 @@ variable "node_pools" {
       auto_upgrade       = true
       service_account    = "project-service-account@moa-meetingplatform.iam.gserviceaccount.com"
       preemptible        = false
-      initial_node_count = 3
+      initial_node_count = 1
     }
   ]
 }
