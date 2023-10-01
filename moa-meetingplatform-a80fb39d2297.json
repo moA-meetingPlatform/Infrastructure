@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "moa-meetingplatform",
+  "private_key_id": "a80fb39d229721add4f26c0f66f92d13ba9a3879",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCem3OfjzBW87dW\n7de8oMfPqnFi3uwcMY0ns284+Tva73+srWPIF+U1318vF2C+//iCXw5Ra6w//ZYW\n1llJZDUJ1eTT0XE5CdFa0Zwbbrx1eLBetfbqmcTv/CnsDndvbnVHHH8VAzlEhGtq\nKb/2l20ObM4PVjO+IOlwVWnfO4McWih1Ww9oBrDuu6ekDrPPXwjhJX1p+wTHHgyd\noQbvPnSXCG2uY1rZlFO6f56+2iBoY29LjGueCmbl5Ak+/+bYKrjX0cP+oajpSbkg\nSggRft0jjtMF+jFFcAd+5hZWbw2y8EZwEjxw19nNz0HFj0QM4K+6OE/5w862JFQs\npVoAxmfhAgMBAAECggEAAXGqNH0ElFC/uJDjHUUxdy3haQ8H2JyINnZRwD5fUcz1\nvUgO19bahV+1Ps6DA6TSSbg9KcybKDH82H8MbQ32gFJsNOl76GhdzuqIS0+kyO+t\nBg+4txtonu64IFK5ZPr9IlqbZZY+l+XEvJYIuLau4tS8GN5QtkhtF6gPa12KrLVk\naUqfo/Zs++V1lbfCwead3jn9MUBU/YoqqeJT6nfbxglmbqdpWQIIoO073E0Lgugu\nJ8AIL22+pBfbtP2Rq+HIeYVKbVkCKvCvROFzMd71HEDzRfwdyeUPw+kko2BCW0Y6\nScvJy1RAr8H+554P0hEf0d758eL//VWpul27Gj/QAQKBgQDaNtV6N4uTAfvpsECV\nFf3RcdmQkybZcJyhLm5QOlLxs6jkoBRbVOCwP5sBSU2CaZNoiurBpf6d41VnB1SK\nHcTnEINFHl0HnAkondj5UotpyIYXR3NKIsE5ULmfeiTCjhTpptuhfZrt3sgrZw8T\nMjDnVbTncxh9GURRK4EsP4MyoQKBgQC6ElCNgEGBCk5oyAlpPPAL4cVz4wvXlctq\nRLnOrZR0DzRt3AiiF2qR5+5J2dg15liUp6qPBvMoCuyJ05UNu31oPq7pSuoqVXet\n3xgRnI/GpM4DbGlAqMD4qxEOPExpF3Lcof5utSYIPxxBcK2gEOnlbVMly8UdaUCF\nbFmb4uhtQQKBgQCnEi6WOWrarj0yqah4vPKtZk6eO5wWBPtXCNabBFy3A8f+63VK\njAzPxJMoA/idLboX46xjgXUVa5XaoSkf6jT0eJcY12uAxP3aJCiYk5N79XR85E6n\n5z4rZNwJ9xmn/+KRFhi4ZxO0pcp6OJi5KMd6hwtP3bZVKYA96WIn/6SyoQKBgCIf\nDaqFJH33V92bIS6tQA/NvRm9PwSvsXexVqlx51FJIIIs4WBoDuDmuSnNyvpHXWMV\nRA+qZJipOCsmI6U7BopBRG3/kOVmeuXljVJddXgl7KlwDfUPfSOcqyoDILf81tFi\n23eNvIWynQnbEdvSfjHWVHMP5Pu5u108O0p818aBAoGBAKBz4B4fG/k6T7H3BIaV\nIoF1PDf9N/QbbsnREIn4q8zwTGJTb3eCcu5LlFFYEbYV5fm7VErQNZRGFSg/2U3v\n4RxkgDSCMpJN8Dro4D3jukGJw3hfbxMYl8IwhR7XtTWeiknBX7rUHm8aJIRBt2sZ\nTAcha+iF9myQEdaUzdDT//Ns\n-----END PRIVATE KEY-----\n",
+  "client_email": "jenkins-service-account@moa-meetingplatform.iam.gserviceaccount.com",
+  "client_id": "101162080986498203922",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/jenkins-service-account%40moa-meetingplatform.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

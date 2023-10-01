@@ -20,8 +20,6 @@ module "gke" {
   network      = module.vpc.vpc_name
   subnetwork   = module.vpc.subnet_name
   node_pools   = var.node_pools
-  /* ip_range_pods     = "10.0.0.0/20"
-  ip_range_services = "10.0.16.0/20" */
-  network_policy = true
 
+  network_policy = true
 }

@@ -22,7 +22,7 @@ variable "gcp_default_region" {
 variable "gcp_default_zones" {
   description = "The default GCP zones within the region"
   type        = list(string)
-  default     = ["asia-northeast3-a", "asia-northeast3-b", "asia-northeast3-c"]
+  default     = ["asia-northeast3-a"]
 }
 
 variable "node_pools" {
@@ -50,8 +50,8 @@ variable "node_pools" {
   default = [
     {
       name               = "default-node-pool"
-      machine_type       = "e2-medium"
-      node_locations     = "asia-northeast3-b,asia-northeast3-c"
+      machine_type       = "e2-standard-8"
+      node_locations     = "asia-northeast3-a"
       min_count          = 1
       max_count          = 100
       local_ssd_count    = 0
