@@ -14,7 +14,7 @@ resource "google_container_cluster" "primary" {
 
     autoscaling {
       min_node_count = 1
-      max_node_count = 3
+      max_node_count = 10
     }
 
     upgrade_settings {

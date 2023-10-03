@@ -13,6 +13,13 @@ spec:
       labels:
         app: jenkins-server
     spec:
+      # initContainers:
+      #   - name: volume-permission
+      #     image: busybox
+      #     command: ["sh", "-c", "chmod 755 /container"]
+      #     volumeMounts:
+      #     - name: jenkins-data
+      #       mountPath: /container
       securityContext:
             fsGroup: 1000
             runAsUser: 1000

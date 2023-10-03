@@ -1,5 +1,5 @@
 provider "google" {
-  credentials = file("../../../moa-meetingplatform-0c9f005c745b.json")
+  credentials = file("../../../../moa-meetingplatform-0c9f005c745b.json")
   project     = "moa-meetingplatform"
   region      = "asia-northeast3"
 }
