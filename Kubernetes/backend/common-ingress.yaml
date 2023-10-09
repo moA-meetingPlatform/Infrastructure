@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: common-ingress
+  namespace: backend
+  annotations:
+    # nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/issuer: "letsencrypt-production"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # nginx.ingress.kubernetes.io/secure-backends: "true"
+    # nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "PUT, GET, POST, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "authorization, origin, content-type, accept"
+    nginx.ingress.kubernetes.io/cors-max-age: "3600"
+
+spec:
+  ingressClassName: nginx
+  defaultBackend:
+      service:
+        name: be-user
+        port:
+          number: 8000
+  rules:
+  - host: moa-backend.duckdns.org
+    http:
+      paths:
+      - path: /api/v1/user/test
+        pathType: Prefix
+        backend:
+          service:
+            name: be-user
+            port:
+              number: 8000
+  tls:
+      - hosts:
+        - moa-backend.duckdns.org
+        secretName: moa-backend-tls
+      
