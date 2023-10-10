@@ -1,0 +1,18 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: letsencrypt-production
+  namespace: backend
+spec:
+  acme:
+    # ACME 서버 URL
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # ACMD 등록을 위한 이메일 주소
+    email: awdfaf@kakao.com
+    # ACME 계정 비밀키를 저장할 Secret 이름
+    privateKeySecretRef:
+      name: letsencrypt-production
+    solvers:
+    - http01:
+        ingress:
+          class:  nginx
