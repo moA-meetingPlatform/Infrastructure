@@ -26,11 +26,21 @@ spec:
   - host: moa-backend.duckdns.org
     http:
       paths:
-      - path: /api/v1/user/test
+      - path: /api/v1/user
         pathType: Prefix
         backend:
           service:
             name: be-user
+            port:
+              number: 8000
+  - host: moa-backend.duckdns.org
+    http:
+      paths:
+      - path: /api/v1/meeting
+        pathType: Prefix
+        backend:
+          service:
+            name: be-meeting
             port:
               number: 8000
   tls:
