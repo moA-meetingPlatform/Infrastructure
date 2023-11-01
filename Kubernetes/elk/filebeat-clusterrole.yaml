@@ -5,11 +5,26 @@ metadata:
 rules:
 - apiGroups: [""] # "" indicates the core API group
   resources:
+  - nodes
   - namespaces
   - pods
   verbs:
   - get
   - watch
   - list
+- apiGroups: ["apps"]
+  resources:
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["batch"]
+  resources:
+  - jobs
+  verbs:
+  - get
+  - list
+  - watch
 
 

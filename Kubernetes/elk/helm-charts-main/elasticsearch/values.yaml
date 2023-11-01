@@ -1,0 +1,57 @@
+# 수정된 values.yaml
+
+# Elasticsearch 클러스터 이름 설정
+clusterName: "elasticsearch"
+
+# 마스터 노드 그룹 설정
+nodeGroup: "master"
+masterService: "elasticsearch-master"
+
+# Elasticsearch 노드 역할 설정
+roles:
+  - master
+  - data
+  - ingest
+
+# 레플리카 수와 최소 마스터 노드 수 설정
+replicas: 3
+minimumMasterNodes: 2
+
+# Elasticsearch 버전 설정
+esMajorVersion: "8"
+image: "docker.elastic.co/elasticsearch/elasticsearch"
+imageTag: "8.10.4"
+
+# 기타 설정
+createCert: true
+imagePullPolicy: "IfNotPresent"
+resources:
+  requests:
+    cpu: "1000m"
+    memory: "2Gi"
+  limits:
+    cpu: "1000m"
+    memory: "2Gi"
+networkHost: "0.0.0.0"
+
+# 스토리지 설정
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 30Gi
+
+# 퍼시스턴스 설정
+persistence:
+  enabled: true
+
+# 서비스 설정
+service:
+  enabled: true
+  type: ClusterIP
+
+# 기타 설정들은 기본 값에 따라 유지
+
+
+tests:
+  enabled: false

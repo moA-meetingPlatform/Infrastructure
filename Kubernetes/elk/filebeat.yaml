@@ -7,6 +7,7 @@ spec:
   type: filebeat
   version: 8.10.4
   config:
+    logging.level: debug
     filebeat:
       autodiscover:
         providers:
@@ -19,52 +20,29 @@ spec:
               paths:
               - /var/log/containers/*${data.kubernetes.container.id}.log
     output.logstash:
-      hosts: ["logstash.elk.svc.cluster.local:5044"]
+      hosts: ["logstash-ls-beats.elk.svc.cluster.local:5044"]
+      ssl_enabled: true
+      ssl:
+        certificate_authorities:
+        - /usr/share/filebeat/config/certs/tls.crt
   daemonSet:
     podTemplate:
       spec:
-        serviceAccountName: elastic-beat-filebeat
+        serviceAccountName: filebeat
         automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
         containers:
         - name: filebeat
+          volumeMounts:
+          - name: elasticsearch-certs
+            mountPath: /usr/share/filebeat/config/certs
           env:
           - name: NODE_NAME
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: elastic-beat-filebeat
-  namespace: elk
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: elastic-beat-autodiscover-binding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: elastic-beat-autodiscover
-subjects:
-- kind: ServiceAccount
-  name: elastic-beat-filebeat
-  namespace: elk
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: elastic-beat-autodiscover
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  - namespaces
-  - events
-  - pods
-  verbs:
-  - get
-  - list
-  - watch
+        volumes:
+        - name: elasticsearch-certs
+          secret:
+            secretName: elasticsearch-es-http-certs-public

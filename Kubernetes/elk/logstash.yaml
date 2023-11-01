@@ -9,21 +9,28 @@ spec:
     - name: elasticsearch
       clusterName: elk
   version: 8.10.4
+  config:
+    log.level: debug
   pipelines:
     - pipeline.id: main
       config.string: |
         input {
           beats {
             port => 5044
+            ssl_enabled => true
+            ssl_certificate => "/usr/share/logstash/config/certs/tls.crt"
+            ssl_key => "/usr/share/logstash/config/certs/tls.key"
+            ssl_certificate_authorities => ["/usr/share/logstash/config/certs/tls.crt"]
           }
         }
         output {
           elasticsearch {
-            hosts => [ "${ES_HOSTS}" ]
-            user => "${ES_USER}"
-            password => "${ES_PASSWORD}"
-            ssl_certificate_authorities => "/usr/share/logstash/config/certs/ca.crt"
-            ssl => true
+            hosts => ["https://elasticsearch-es-http.elk.svc:9200"]
+            user => "elastic"
+            password => "f5JJnQG88L9Hq99GbS5c437Q"
+            ssl_certificate_authorities => ["/usr/share/logstash/config/certs/tls.crt"]
+            ssl_enabled => true
+            index => "springboot-%{+YYYY.MM.dd}"
           }
         }
   services:
@@ -56,4 +63,4 @@ spec:
       volumes:
         - name: elasticsearch-certs
           secret:
-            secretName: elasticsearch-es-http-certs-public
+            secretName: elasticsearch-es-http-certs-internal
