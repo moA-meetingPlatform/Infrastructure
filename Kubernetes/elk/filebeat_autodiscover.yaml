@@ -15,6 +15,7 @@ spec:
         providers:
         - type: kubernetes
           node: ${NODE_NAME}
+          namespace: backend
           hints:
             enabled: true
             default_config:
