@@ -19,9 +19,16 @@ deployment:
     # Setting this to false with ingressController.enabled=true will create a
     # controller-only release.
     enabled: true
-  ## Specify the service account to create and to be assigned to the deployment / daemonset and for th migrations
+  ## Minimum number of seconds for which a newly created pod should be ready without any of its container crashing,
+  ## for it to be considered available.
+  # minReadySeconds: 60
+  ## Specify the service account to create and to be assigned to the deployment / daemonset and for the migrations
   serviceAccount:
     create: true
+    # Automount the service account token. By default, this is disabled, and the token is only mounted on the controller
+    # container. Some sidecars require enabling this. Note that enabling this exposes Kubernetes credentials to Kong
+    # Lua code, increasing potential attack surface.
+    automountServiceAccountToken: false
   ## Optionally specify the name of the service account to create and the annotations to add.
   #  name:
   #  annotations: {}
@@ -53,7 +60,12 @@ deployment:
   # Use a DaemonSet controller instead of a Deployment controller
   daemonset: false
   hostNetwork: false
-
+  # kong_prefix empty dir size
+  prefixDir:
+    sizeLimit: 256Mi
+  # tmp empty dir size
+  tmpDir:
+    sizeLimit: 1Gi
 # Override namepsace for Kong chart resources. By default, the chart creates resources in the release namespace.
 # This may not be desirable when using this chart as a dependency.
 # namespace: "example"
@@ -71,7 +83,12 @@ deployment:
 # e.g. setting pg_user here will override the value normally set when postgresql.enabled
 # is set below. In general, you should not set values here if they are set elsewhere.
 env:
-  database: "off"
+  database: "postgres"
+  # the chart uses the traditional router (for Kong 3.x+) because the ingress
+  # controller generates traditional routes. if you do not use the controller,
+  # you may set this to "traditional_compatible" or "expressions" to use the new
+  # DSL-based router
+  router_flavor: "traditional"
   nginx_worker_processes: "2"
   proxy_access_log: /dev/stdout
   admin_access_log: /dev/stdout
@@ -82,6 +99,14 @@ env:
   admin_gui_error_log: /dev/stderr
   portal_api_error_log: /dev/stderr
   prefix: /kong_prefix/
+
+  
+  pg_host: kong-postgresql.backend.svc.cluster.local
+
+  pg_port: 5432
+  pg_user: kong
+  pg_password: Kf82Ua1vmf
+  pg_database: kong
 
 # This section is any customer specific environments variables that doesn't require KONG_ prefix.
 # These custom environment variables are typicall used in custom plugins or serverless plugins to
@@ -107,12 +132,13 @@ image:
   tag: "3.4"
   # Kong Enterprise
   # repository: kong/kong-gateway
-  # tag: "2.8"
+  # tag: "3.4"
 
+  # Specify a semver version if your image tag is not one (e.g. "nightly")
+  effectiveSemver:
   pullPolicy: IfNotPresent
   ## Optionally specify an array of imagePullSecrets.
   ## Secrets must be manually created in the namespace.
-  ## If using the official Kong Enterprise registry above, you MUST provide a secret.
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
   ##
   # pullSecrets:
@@ -125,6 +151,7 @@ admin:
   # Enterprise users that wish to use Kong Manager with the controller should enable this
   enabled: true
   type: ClusterIP
+  loadBalancerClass:
   # To specify annotations or labels for the admin service, add them to the respective
   # "annotations" or "labels" dictionaries below.
   annotations: {}
@@ -155,6 +182,14 @@ admin:
     # Additional listen parameters, e.g. "reuseport", "backlog=16384"
     parameters:
     - http2
+
+    # Specify the CA certificate to use for TLS verification of the Admin API client by:
+    # - secretName - the secret must contain a key named "tls.crt" with the PEM-encoded certificate.
+    # - caBundle (PEM-encoded certificate string).
+    # If both are set, caBundle takes precedence.
+    client:
+      caBundle: ""
+      secretName: ""
 
   # Kong admin ingress settings. Useful if you want to expose the Admin
   # API of Kong outside the k8s cluster.
@@ -191,6 +226,9 @@ status:
     containerPort: 8543
     parameters: []
 
+# Name the kong hybrid cluster CA certificate secret
+clusterCaSecretName: ""
+
 # Specify Kong cluster service and listener configuration
 #
 # The cluster service *must* use TLS. It does not support the "http" block
@@ -216,6 +254,7 @@ cluster:
     parameters: []
 
   type: ClusterIP
+  loadBalancerClass:
 
   # Kong cluster ingress settings. Useful if you want to split CP and DP
   # in different clusters.
@@ -239,6 +278,9 @@ proxy:
   # Enable creating a Kubernetes service for the proxy
   enabled: true
   type: NodePort
+  loadBalancerClass:
+  # Override proxy Service name
+  nameOverride: ""
   # To specify annotations or labels for the proxy service, add them to the respective
   # "annotations" or "labels" dictionaries below.
   annotations: {}
@@ -275,14 +317,14 @@ proxy:
     - http2
 
   # Define stream (TCP) listen
-  # To enable, remove "{}", uncomment the section below, and select your desired
-  # ports and parameters. Listens are dynamically named after their servicePort,
+  # To enable, remove "[]", uncomment the section below, and select your desired
+  # ports and parameters. Listens are dynamically named after their containerPort,
   # e.g. "stream-9000" for the below.
   # Note: although you can select the protocol here, you cannot set UDP if you
   # use a LoadBalancer Service due to limitations in current Kubernetes versions.
   # To proxy both TCP and UDP with LoadBalancers, you must enable the udpProxy Service
   # in the next section and place all UDP stream listen configuration under it.
-  stream: {}
+  stream: []
     #   # Set the container (internal) and service (external) ports for this listen.
     #   # These values should normally be the same. If your environment requires they
     #   # differ, note that Kong will match routes based on the containerPort only.
@@ -302,16 +344,46 @@ proxy:
     # Enable/disable exposure using ingress.
     enabled: false
     ingressClassName:
+    # To specify annotations or labels for the ingress, add them to the respective
+    # "annotations" or "labels" dictionaries below.
+    annotations: {}
+    labels: {}
     # Ingress hostname
-    # TLS secret name.
-    # tls: kong-proxy.example.com-tls
     hostname:
-    # Map of ingress annotations.
-    annotations:
-    # Ingress path.
+    # Ingress path (when used with hostname above).
     path: /
-    # Each path in an Ingress is required to have a corresponding path type. (ImplementationSpecific/Exact/Prefix)
+    # Each path in an Ingress is required to have a corresponding path type (when used with hostname above). (ImplementationSpecific/Exact/Prefix)
     pathType: ImplementationSpecific
+    # Ingress hosts. Use this instead of or in combination with hostname to specify multiple ingress host configurations
+    hosts: []
+    # - host: kong-proxy.example.com
+    #   paths:
+    #   # Ingress path.
+    #   - path: /*
+    #   # Each path in an Ingress is required to have a corresponding path type. (ImplementationSpecific/Exact/Prefix)
+    #     pathType: ImplementationSpecific
+    # - host: kong-proxy-other.example.com
+    #   paths:
+    #   # Ingress path.
+    #   - path: /other
+    #   # Each path in an Ingress is required to have a corresponding path type. (ImplementationSpecific/Exact/Prefix)
+    #     pathType: ImplementationSpecific
+    #     backend:
+    #       service:
+    #         name: kong-other-proxy
+    #         port:
+    #           number: 80
+    #
+    # TLS secret(s)
+    # tls: kong-proxy.example.com-tls
+    # Or if multiple hosts/secrets needs to be configured:
+    # tls:
+    # - secretName: kong-proxy.example.com-tls
+    #   hosts:
+    #   - kong-proxy.example.com
+    # - secretName: kong-proxy-other.example.com-tls
+    #   hosts:
+    #   - kong-proxy-other.example.com
 
   # Optionally specify a static load balancer IP.
   # loadBalancerIP:
@@ -325,6 +397,7 @@ udpProxy:
   # Enable creating a Kubernetes service for UDP proxying
   enabled: false
   type: LoadBalancer
+  loadBalancerClass:
   # To specify annotations or labels for the proxy service, add them to the respective
   # "annotations" or "labels" dictionaries below.
   annotations: {}
@@ -334,10 +407,10 @@ udpProxy:
   # loadBalancerIP:
 
   # Define stream (UDP) listen
-  # To enable, remove "{}", uncomment the section below, and select your desired
+  # To enable, remove "[]", uncomment the section below, and select your desired
   # ports and parameters. Listens are dynamically named after their servicePort,
   # e.g. "stream-9000" for the below.
-  stream: {}
+  stream: []
     #   # Set the container (internal) and service (external) ports for this listen.
     #   # These values should normally be the same. If your environment requires they
     #   # differ, note that Kong will match routes based on the containerPort only.
@@ -418,27 +491,21 @@ migrations:
 # Note: Use this section only if you are deploying Kong in DB-less mode
 # and not as an Ingress Controller.
 dblessConfig:
-#   # Either Kong's configuration is managed from an existing ConfigMap (with Key: kong.yml)
+  # Either Kong's configuration is managed from an existing ConfigMap (with Key: kong.yml)
   configMap: ""
-#   # Or the configuration is passed in full-text below
+  # Or Kong's configuration is managed from an existing Secret (with Key: kong.yml)
+  secret: ""
+  # Or the configuration is passed in full-text below
   config: |
-    _format_version: "2.1"
-    _transform: true
-    services:
-      - name: be-meeting-service
-        url: http://be-meeting.backend.svc.cluster.local:8000
-        routes:
-          - name: be-meeting-route
-            paths:
-              - /api/v1/meeting/
-            strip_path: false
-      - name: be-user-service
-        url: http://be-user.backend.svc.cluster.local:8000
-        routes:
-          - name: be-user-route
-            paths:
-              - /api/v1/user/
-            strip_path: false
+  # # _format_version: "1.1"
+  # # services:
+  # #   # Example configuration
+  # #   # - name: example.com
+  # #   #   url: http://example.com
+  # #   #   routes:
+  # #   #   - name: example
+  # #   #     paths:
+  # #   #     - "/example"
   ## Optionally specify any extra sidecar containers to be included in the
   ## migration jobs
   ## See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#container-v1-core
@@ -457,7 +524,7 @@ ingressController:
   enabled: false
   image:
     repository: kong/kubernetes-ingress-controller
-    tag: "2.3"
+    tag: "2.12"
     # Optionally set a semantic version for version-gated features. This can normally
     # be left unset. You only need to set this if your tag is not a semver string,
     # such as when you are using a "next" tag. Set this to the effective semantic
@@ -466,12 +533,19 @@ ingressController:
     effectiveSemver:
   args: []
 
+  gatewayDiscovery:
+    enabled: false
+    generateAdminApiService: false
+    adminApiService:
+      namespace: ""
+      name: ""
+
   # Specify individual namespaces to watch for ingress configuration. By default,
   # when no namespaces are set, the controller watches all namespaces and uses a
   # ClusterRole to grant access to Kubernetes resources. When you list specific
   # namespaces, the controller will watch those namespaces only and will create
-  # namespaced-scoped Roles for each of them. Note that watching specific namespaces
-  # disables KongClusterPlugin usage, as KongClusterPlugins only exist as cluster resources.
+  # namespaced-scoped Roles for each of them. The controller will still use a
+  # ClusterRole for cluster-scoped resources.
   # Requires controller 2.0.0 or newer.
   watchNamespaces: []
 
@@ -496,16 +570,22 @@ ingressController:
 
   admissionWebhook:
     enabled: false
-    failurePolicy: Fail
+    failurePolicy: Ignore
     port: 8080
     certificate:
       provided: false
+    namespaceSelector: {}
     # Specifiy the secretName when the certificate is provided via a TLS secret
     # secretName: ""
     # Specifiy the CA bundle of the provided certificate.
     # This is a PEM encoded CA bundle which will be used to validate the webhook certificate. If unspecified, system trust roots on the apiserver are used.
     # caBundle:
     #   | Add the CA bundle content here.
+    service:
+      # Specify custom labels for the validation webhook service.
+      labels: {}
+    # Tune the default Kubernetes timeoutSeconds of 10 seconds
+    # timeoutSeconds: 10
 
   ingressClass: kong
   # annotations for IngressClass resource (Kubernetes 1.18+)
@@ -534,7 +614,7 @@ ingressController:
     failureThreshold: 3
   readinessProbe:
     httpGet:
-      path: "/healthz"
+      path: "/readyz"
       port: 10254
       scheme: HTTP
     initialDelaySeconds: 5
@@ -551,6 +631,46 @@ ingressController:
   #   requests:
   #     cpu: 50m
   #     memory: 128Mi
+
+  konnect:
+    enabled: false
+
+    # Specifies a Konnect Runtime Group's ID that the controller will push its data-plane config to.
+    runtimeGroupID: ""
+
+    # Specifies a Konnect API hostname that the controller will use to push its data-plane config to.
+    # By default, this is set to US region's production API hostname.
+    # If you are using a different region, you can set this to the appropriate hostname (e.g. "eu.kic.api.konghq.com").
+    apiHostname: "us.kic.api.konghq.com"
+
+    # Specifies a secret that contains a client TLS certificate that the controller
+    # will use to authenticate against Konnect APIs.
+    tlsClientCertSecretName: "konnect-client-tls"
+
+    license:
+      # Specifies whether the controller should fetch a license from Konnect and apply it to managed Gateways.
+      enabled: false
+
+  adminApi:
+    tls:
+      client:
+        # Enable TLS client authentication for the Admin API.
+        enabled: false
+
+        # If set to false, Helm will generate certificates for you.
+        # If set to true, you are expected to provide your own secret (see secretName, caSecretName).
+        certProvided: false
+
+        # Client TLS certificate/key pair secret name that Ingress Controller will use to authenticate with Kong Admin API.
+        # If certProvided is set to false, it is optional (can be specified though if you want to force Helm to use
+        # a specific secret name).
+        secretName: ""
+
+        # CA TLS certificate/key pair secret name that the client TLS certificate is signed by.
+        # If certProvided is set to false, it is optional (can be specified though if you want to force Helm to use
+        # a specific secret name).
+        caSecretName: ""
+
 
 # -----------------------------------------------------------------------------
 # Postgres sub-chart parameters
@@ -577,10 +697,11 @@ ingressController:
 # https://github.com/Kong/charts/blob/main/charts/kong/FAQs.md#kong-fails-to-start-after-helm-upgrade-when-postgres-is-used-what-do-i-do
 
 postgresql:
-  enabled: false
+  enabled: true
   auth:
     username: kong
     database: kong
+    password: Kf82Ua1vmf
   image:
     # use postgres < 14 until is https://github.com/Kong/kong/issues/8533 resolved and released
     # enterprise (kong-gateway) supports postgres 14
@@ -588,6 +709,71 @@ postgresql:
   service:
     ports:
       postgresql: "5432"
+
+# -----------------------------------------------------------------------------
+# Configure cert-manager integration
+# -----------------------------------------------------------------------------
+
+certificates:
+  enabled: false
+
+  # Set either `issuer` or `clusterIssuer` to the name of the desired cert manager issuer
+  # If left blank a built in self-signed issuer will be created and utilized
+  issuer: ""
+  clusterIssuer: ""
+
+  # Set proxy.enabled to true to issue default kong-proxy certificate with cert-manager
+  proxy:
+    enabled: false
+    # Set `issuer` or `clusterIssuer` to name of alternate cert-manager clusterIssuer to override default
+    # self-signed issuer.
+    issuer: ""
+    clusterIssuer: ""
+    # Use commonName and dnsNames to set the common name and dns alt names which this
+    # certificate is valid for. Wildcard records are supported by the included self-signed issuer.
+    commonName: "app.example"
+    # Remove the "[]" and uncomment/change the examples to add SANs
+    dnsNames: []
+    # - "app.example"
+    # - "*.apps.example"
+    # - "*.kong.example"
+
+  # Set admin.enabled true to issue kong admin api and manager certificate with cert-manager
+  admin:
+    enabled: true
+    # Set `issuer` or `clusterIssuer` to name of alternate cert-manager clusterIssuer to override default
+    # self-signed issuer.
+    issuer: ""
+    clusterIssuer: ""
+    # Use commonName and dnsNames to set the common name and dns alt names which this
+    # certificate is valid for. Wildcard records are supported by the included self-signed issuer.
+    commonName: "kong.example"
+    # Remove the "[]" and uncomment/change the examples to add SANs
+    dnsNames: []
+    # - "manager.kong.example"
+
+  # Set portal.enabled to true to issue a developer portal certificate with cert-manager
+  portal:
+    enabled: true
+    # Set `issuer` or `clusterIssuer` to name of alternate cert-manager clusterIssuer to override default
+    # self-signed issuer.
+    issuer: ""
+    clusterIssuer: ""
+    # Use commonName and dnsNames to set the common name and dns alt names which this
+    # certificate is valid for. Wildcard records are supported by the included self-signed issuer.
+    commonName: "developer.example"
+    # Remove the "{}" and uncomment/change the examples to add SANs
+    dnsNames: []
+    # - "manager.kong.example"
+
+  # Set cluster.enabled true to issue kong hybrid mtls certificate with cert-manager
+  cluster:
+    enabled: true
+    # Issuers used by the control and data plane releases must match for this certificate.
+    issuer: ""
+    clusterIssuer: ""
+    commonName: "kong_clustering"
+    dnsNames: []
 
 # -----------------------------------------------------------------------------
 # Miscellaneous parameters
@@ -619,15 +805,15 @@ updateStrategy: {}
 resources: {}
   # limits:
   #  cpu: 1
-  #  memory: 1G
+  #  memory: 2G
   # requests:
   #  cpu: 1
-  #  memory: 1G
+  #  memory: 2G
 
 # readinessProbe for Kong pods
 readinessProbe:
   httpGet:
-    path: "/status"
+    path: "/status/ready"
     port: status
     scheme: HTTP
   initialDelaySeconds: 5
@@ -648,12 +834,25 @@ livenessProbe:
   successThreshold: 1
   failureThreshold: 3
 
+# startupProbe for Kong pods
+# startupProbe:
+#   httpGet:
+#     path: "/status"
+#     port: status
+#     scheme: HTTP
+#   initialDelaySeconds: 5
+#   timeoutSeconds: 5
+#   periodSeconds: 2
+#   successThreshold: 1
+#   failureThreshold: 40
+
 # Proxy container lifecycle hooks
 # Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/
 lifecycle:
   preStop:
     exec:
-      # Note kong quit has a default timeout of 10 seconds
+      # kong quit has a default timeout of 10 seconds, and a default wait of 0 seconds.
+      # Note: together they should be less than the terminationGracePeriodSeconds setting below.
       command:
         - kong
         - quit
@@ -702,9 +901,9 @@ autoscaling:
   minReplicas: 2
   maxReplicas: 5
   behavior: {}
-  ## targetCPUUtilizationPercentage only used if the cluster doesn't support autoscaling/v2beta
+  ## targetCPUUtilizationPercentage only used if the cluster doesn't support autoscaling/v2 or autoscaling/v2beta
   targetCPUUtilizationPercentage:
-  ## Otherwise for clusters that do support autoscaling/v2beta, use metrics
+  ## Otherwise for clusters that do support autoscaling/v2 or autoscaling/v2beta, use metrics
   metrics:
     - type: Resource
       resource:
@@ -722,6 +921,8 @@ podDisruptionBudget:
 
 podSecurityPolicy:
   enabled: false
+  labels: {}
+  annotations: {}
   spec:
     privileged: false
     fsGroup:
@@ -738,6 +939,7 @@ podSecurityPolicy:
       - 'configMap'
       - 'secret'
       - 'emptyDir'
+      - 'projected'
     allowPrivilegeEscalation: false
     hostNetwork: false
     hostIPC: false
@@ -753,7 +955,16 @@ priorityClassName: ""
 securityContext: {}
 
 # securityContext for containers.
-containerSecurityContext: {}
+containerSecurityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  runAsUser: 1000
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop:
+    - ALL
 
 ## Optional DNS configuration for Kong pods
 # dnsPolicy: ClusterFirst
@@ -840,6 +1051,7 @@ manager:
   # Enable creating a Kubernetes service for Kong Manager
   enabled: true
   type: NodePort
+  loadBalancerClass:
   # To specify annotations or labels for the Manager service, add them to the respective
   # "annotations" or "labels" dictionaries below.
   annotations: {}
@@ -886,6 +1098,7 @@ portal:
   # Enable creating a Kubernetes service for the Developer Portal
   enabled: true
   type: NodePort
+  loadBalancerClass:
   # To specify annotations or labels for the Portal service, add them to the respective
   # "annotations" or "labels" dictionaries below.
   annotations: {}
@@ -932,6 +1145,7 @@ portalapi:
   # Enable creating a Kubernetes service for the Developer Portal API
   enabled: true
   type: NodePort
+  loadBalancerClass:
   # To specify annotations or labels for the Portal API service, add them to the respective
   # "annotations" or "labels" dictionaries below.
   annotations: {}
@@ -989,6 +1203,7 @@ clustertelemetry:
     parameters: []
 
   type: ClusterIP
+  loadBalancerClass:
 
   # Kong clustertelemetry ingress settings. Useful if you want to split
   # CP and DP in different clusters.
@@ -1018,3 +1233,13 @@ extraSecrets: []
 # - name: my-secret
 #   mountPath: /mount/to/my/location
 #   subPath: my-subpath # Optional, if you wish to mount a single key and not the entire ConfigMap
+
+extraObjects: []
+# extraObjects:
+# - apiVersion: configuration.konghq.com/v1
+#   kind: KongClusterPlugin
+#   metadata:
+#     name: prometheus
+#   config:
+#     per_consumer: false
+#   plugin: prometheus

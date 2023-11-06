@@ -1,10 +1,21 @@
-{{- if .Values.podSecurityPolicy.enabled }}
-apiVersion: policy/v1beta1
+{{- if and (.Values.podSecurityPolicy.enabled) }}
+apiVersion: {{ include "kong.policyVersion" . }}
 kind: PodSecurityPolicy
 metadata:
   name: {{ template "kong.serviceAccountName" . }}-psp
   labels:
     {{- include "kong.metaLabels" . | nindent 4 }}
+  {{- with .Values.podSecurityPolicy.labels }}
+  {{- range $key, $value := . }}
+    {{ $key }}: {{ $value }}
+  {{- end }}
+  {{- end }}
+  {{- with .Values.podSecurityPolicy.annotations }}
+  annotations:
+  {{- range $key, $value := . }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- end }}
 spec:
 {{ .Values.podSecurityPolicy.spec | toYaml | indent 2 }}
 ---
