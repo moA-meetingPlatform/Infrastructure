@@ -5,44 +5,58 @@ metadata:
   namespace: elk
 spec:
   type: filebeat
-  version: 8.10.4
+  version: 8.8.0
+  serviceAccountName: filebeat
   config:
     logging.level: debug
-    filebeat:
-      autodiscover:
-        providers:
-        - node: ${NODE_NAME}
-          type: kubernetes
-          hints:
-            enabled: true
-            default_config:
-              type: container
-              paths:
-              - /var/log/containers/*${data.kubernetes.container.id}.log
+    filebeat.autodiscover:
+      providers:
+        - type: kubernetes
+          node: ${NODE_NAME}
+          hints.enabled: true
+          templates:
+            - condition:
+                contains:
+                  kubernetes.namespace: "backend"
+              config:
+                - type: container
+                  paths:
+                    - /var/log/containers/*${data.kubernetes.container.id}.log
     output.logstash:
-      hosts: ["logstash-ls-beats.elk.svc.cluster.local:5044"]
-      ssl_enabled: true
-      ssl:
-        certificate_authorities:
-        - /usr/share/filebeat/config/certs/tls.crt
+      hosts: ["logstash-ls-beats:5044"]
   daemonSet:
     podTemplate:
       spec:
         serviceAccountName: filebeat
         automountServiceAccountToken: true
-        securityContext:
-          runAsUser: 0
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true # Allows to provide richer host metadata
         containers:
         - name: filebeat
+          securityContext:
+            runAsUser: 0
+            # If using Red Hat OpenShift uncomment this:
+            #privileged: true
           volumeMounts:
-          - name: elasticsearch-certs
-            mountPath: /usr/share/filebeat/config/certs
+          - name: varlogcontainers
+            mountPath: /var/log/containers
+          - name: varlogpods
+            mountPath: /var/log/pods
+          - name: varlibdockercontainers
+            mountPath: /var/lib/docker/containers
           env:
-          - name: NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
         volumes:
-        - name: elasticsearch-certs
-          secret:
-            secretName: elasticsearch-es-http-certs-public
+        - name: varlogcontainers
+          hostPath:
+            path: /var/log/containers
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
