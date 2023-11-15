@@ -101,11 +101,11 @@ env:
   prefix: /kong_prefix/
 
   
-  pg_host: kong-postgresql.backend.svc.cluster.local
+  pg_host: kong-postgresql.kong.svc.cluster.local
 
   pg_port: 5432
   pg_user: kong
-  pg_password: Kf82Ua1vmf
+  pg_password: 1234
   pg_database: kong
 
 # This section is any customer specific environments variables that doesn't require KONG_ prefix.
@@ -701,7 +701,7 @@ postgresql:
   auth:
     username: kong
     database: kong
-    password: Kf82Ua1vmf
+    password: "1234"
   image:
     # use postgres < 14 until is https://github.com/Kong/kong/issues/8533 resolved and released
     # enterprise (kong-gateway) supports postgres 14

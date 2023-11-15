@@ -1,7 +1,7 @@
 apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
 metadata:
-  name: logstash
+  name: kafka-logstash
   namespace: elk
 spec:
   count: 1
@@ -13,18 +13,12 @@ spec:
     - pipeline.id: main
       config.string: |
         input {
-          beats {
-            port => 5044
-            ssl => false
-          }
-        }
-        filter {
-          grok {
-            match => { "message" => "%{HTTPD_COMMONLOG}"}
-          }
-          geoip {
-            source => "[source][address]"
-            target => "[source]"
+          kafka {
+            bootstrap_servers => "kafka-0.kafka.svc.cluster.local:9092"
+            topics => ["local-test"]
+            group_id => "yourGroupId"
+            consumer_threads => 3
+            codec => json
           }
         }
         output {
@@ -34,15 +28,7 @@ spec:
             user => "${ECK_ES_USER}"
             password => "${ECK_ES_PASSWORD}"
             ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+            index => "yourIndexName"
           }
         }
-  services:
-    - name: beats
-      service:
-        spec:
-          type: ClusterIP
-          ports:
-            - port: 5044
-              name: "filebeat"
-              protocol: TCP
-              targetPort: 5044
+
