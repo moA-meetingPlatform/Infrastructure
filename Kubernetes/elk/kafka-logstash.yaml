@@ -10,25 +10,27 @@ spec:
     - clusterName: eck
       name: elasticsearch
   pipelines:
-    - pipeline.id: main
+    - pipeline.id: kafka
       config.string: |
         input {
           kafka {
-            bootstrap_servers => "kafka-0.kafka.svc.cluster.local:9092"
-            topics => ["local-test"]
-            group_id => "yourGroupId"
+            bootstrap_servers => "kafka-0.kafka-headless.kafka.svc.cluster.local:9092"
+            topics => ["search"]
+            group_id => "search"
             consumer_threads => 3
-            codec => json
+            
           }
         }
         output {
-        
+          stdout {
+              codec => rubydebug
+          }    
           elasticsearch {
-            hosts => [ "${ECK_ES_HOSTS}" ]
-            user => "${ECK_ES_USER}"
-            password => "${ECK_ES_PASSWORD}"
-            ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
-            index => "yourIndexName"
-          }
+              hosts => [ "${ECK_ES_HOSTS}" ]
+              user => "awdfaf"
+              password => "awdfaf"
+              ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
+              index => "search"
+            }
         }
 

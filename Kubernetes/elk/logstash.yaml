@@ -28,7 +28,6 @@ spec:
           }
         }
         output {
-        
           elasticsearch {
             hosts => [ "${ECK_ES_HOSTS}" ]
             user => "${ECK_ES_USER}"
