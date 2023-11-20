@@ -1,0 +1,15 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+  namespace: backend
+spec:
+  version: 8.8.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+    namespace: backend
+  config:
+    xpack.monitoring.ui.container.elasticsearch.enabled: true
+    xpack.monitoring.elasticsearch.hosts: ["http://elasticsearch-monitoring.backend.svc.cluster.local:9200"]
+    xpack.monitoring.ui.ccs.enabled: true

@@ -2,7 +2,7 @@ apiVersion: logstash.k8s.elastic.co/v1alpha1
 kind: Logstash
 metadata:
   name: kafka-logstash
-  namespace: elk
+  namespace: backend
 spec:
   count: 1
   version: 8.8.0
@@ -20,6 +20,8 @@ spec:
             consumer_threads => 3
             
           }
+
+
         }
         output {
           stdout {
